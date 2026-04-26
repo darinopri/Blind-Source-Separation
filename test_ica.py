@@ -181,6 +181,58 @@ def test_evaluate_permutation():
     print(PASS, "metrics.evaluate() — correct alignment and sign correction")
 
 
+def test_sir_sar_perfect_recovery():
+    """When S_hat == S_true, every source has zero interference and zero
+    artifacts, so SIR and SAR must both exceed 60 dB (or be infinite)."""
+    from metrics import sir_sar, normalise_sources
+    S   = generate_sources(n_samples=20_000)
+    S_n = normalise_sources(S)
+    sir_vals, sar_vals = sir_sar(S_n, S_n.copy())
+    for i, (sir, sar) in enumerate(zip(sir_vals, sar_vals)):
+        assert np.isinf(sir) or sir > 60.0, \
+            f"Source {i}: SIR = {sir:.1f} dB for perfect recovery (expected > 60 dB)"
+        assert np.isinf(sar) or sar > 60.0, \
+            f"Source {i}: SAR = {sar:.1f} dB for perfect recovery (expected > 60 dB)"
+    print(PASS, "sir_sar() — perfect recovery yields SIR > 60 dB and SAR > 60 dB")
+
+
+def test_evaluate_returns_sir_sar_keys():
+    """evaluate() must return sir_db, sar_db, mean_sir_db, mean_sar_db
+    with the correct shapes and finite (or inf) float values."""
+    from metrics import evaluate
+    from ica import blind_source_separation
+    S = generate_sources(n_samples=10_000)
+    X, _ = random_mixing(S)
+    result = blind_source_separation(X, max_iter=500)
+    res = evaluate(S, result["S"])
+    for key in ("sir_db", "sar_db"):
+        assert key in res, f"Key '{key}' missing from evaluate() output"
+        assert len(res[key]) == S.shape[0], \
+            f"len({key}) = {len(res[key])}, expected {S.shape[0]}"
+    for key in ("mean_sir_db", "mean_sar_db"):
+        assert key in res, f"Key '{key}' missing from evaluate() output"
+        assert isinstance(res[key], float), f"{key} is not a float"
+    print(PASS, "evaluate() — sir_db, sar_db, mean_sir_db, mean_sar_db present and well-typed")
+
+
+def test_full_pipeline_sir_sar():
+    """SIR > 10 dB and SAR > 10 dB indicate the algorithm introduces
+    neither significant source leakage nor significant artifacts."""
+    from ica import blind_source_separation
+    from metrics import evaluate
+    S = generate_sources(n_samples=20_000)
+    X, _ = random_mixing(S, seed=5)
+    result = blind_source_separation(X, max_iter=1000, tol=1e-8, random_state=0)
+    res = evaluate(S, result["S"])
+    assert res["mean_sir_db"] > 10.0, \
+        f"Mean SIR too low: {res['mean_sir_db']:.2f} dB (expected > 10 dB)"
+    assert res["mean_sar_db"] > 10.0, \
+        f"Mean SAR too low: {res['mean_sar_db']:.2f} dB (expected > 10 dB)"
+    print(PASS,
+          f"full pipeline — SIR = {res['mean_sir_db']:.1f} dB, "
+          f"SAR = {res['mean_sar_db']:.1f} dB  (> 10 dB threshold)")
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -197,6 +249,9 @@ ALL_TESTS = [
     test_w_total_approx_a_inverse,
     test_audio_io_roundtrip,
     test_evaluate_permutation,
+    test_sir_sar_perfect_recovery,
+    test_evaluate_returns_sir_sar_keys,
+    test_full_pipeline_sir_sar,
 ]
 
 
