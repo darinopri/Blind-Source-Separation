@@ -41,7 +41,7 @@ def center(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 
 # ---------------------------------------------------------------------------
-# Step 6 — Covariance and Whitening
+# Steps 2–4 — Covariance, Eigendecomposition, and Whitening
 # ---------------------------------------------------------------------------
 
 def compute_covariance(X: np.ndarray) -> np.ndarray:
