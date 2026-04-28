@@ -234,6 +234,53 @@ def test_full_pipeline_sir_sar():
 
 
 # ---------------------------------------------------------------------------
+# Librosa real-audio tests (trumpet + brahms)
+# ---------------------------------------------------------------------------
+
+def _load_librosa_sources(duration_sec: float = 3.0) -> tuple:
+    """Load trumpet and brahms from librosa cache, trim to same length."""
+    import librosa
+    sr = 22050
+    n = int(duration_sec * sr)
+    trumpet, _ = librosa.load(librosa.ex("trumpet"), sr=sr, mono=True, duration=duration_sec)
+    brahms,   _ = librosa.load(librosa.ex("brahms"),   sr=sr, mono=True, duration=duration_sec)
+    # Pad with zeros if a clip is shorter than requested duration
+    def _pad(x):
+        return np.pad(x, (0, max(0, n - len(x))))[:n]
+    return np.vstack([_pad(trumpet), _pad(brahms)]), sr
+
+
+def test_librosa_mixing_shape():
+    """Sanity-check: two librosa sources mix into the expected shape."""
+    from audio_io import simulate_mixing
+    S, sr = _load_librosa_sources()
+    assert S.shape == (2, int(3.0 * sr)), \
+        f"Unexpected source shape: {S.shape}"
+    X, A = simulate_mixing(S, random_state=0)
+    assert X.shape == S.shape, f"Mixed shape {X.shape} != source shape {S.shape}"
+    assert A.shape == (2, 2), f"Mixing matrix shape: {A.shape}"
+    print(PASS, f"librosa mixing — trumpet+brahms → X shape {X.shape}, A shape {A.shape}")
+
+
+def test_librosa_bss_separation():
+    """BSS on real audio (trumpet + brahms): separated sources must
+    correlate |r| > 0.4 with originals after alignment."""
+    from ica import blind_source_separation
+    from metrics import evaluate
+    from audio_io import simulate_mixing
+    S, _ = _load_librosa_sources()
+    X, _ = simulate_mixing(S, random_state=0)
+    result = blind_source_separation(X, max_iter=1000, tol=1e-8, random_state=0)
+    res = evaluate(S, result["S"])
+    for i, corr in enumerate(res["correlations"]):
+        assert corr > 0.4, \
+            f"Source {i} (librosa): |corr| = {corr:.4f} < 0.4 after alignment"
+    print(PASS,
+          f"librosa BSS — corr = {[f'{c:.3f}' for c in res['correlations']]}, "
+          f"mean SNR = {res['mean_snr_db']:.1f} dB")
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
@@ -252,6 +299,8 @@ ALL_TESTS = [
     test_sir_sar_perfect_recovery,
     test_evaluate_returns_sir_sar_keys,
     test_full_pipeline_sir_sar,
+    test_librosa_mixing_shape,
+    test_librosa_bss_separation,
 ]
 
 
