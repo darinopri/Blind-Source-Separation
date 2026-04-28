@@ -30,10 +30,9 @@ Blind-Source-Separation/
 ├── visualise.py         # Matplotlib figures (waveforms, covariance, etc.)
 ├── metrics.py           # SNR, SIR, SAR, alignment, evaluation report
 ├── demo_synthetic.py    # Demo on generated signals; --compare for sklearn
-├── demo_audio.py        # Demo on a WAV file (generates sources if none given)
 ├── demo_two_sources.py  # Cocktail-party demo with two real WAV files
 ├── demo_failure_cases.py# Three failure-case experiments (Gaussian / cond / noise)
-├── test_ica.py          # Full test suite (11 tests, all passing)
+├── test_ica.py          # Full test suite (14 tests, all passing)
 ├── requirements.txt     # Python dependencies
 └── README.md
 ```
@@ -104,30 +103,6 @@ python demo_synthetic.py --compare
 
 Runs both the custom FastICA and scikit-learn's `FastICA` on the same data
 and prints a side-by-side table of SNR, SIR, and SAR for each source.
-
-### Audio demo (one WAV file)
-
-Without a file — generates all sources synthetically:
-
-```bash
-python demo_audio.py
-```
-
-With your own WAV file:
-
-```bash
-python demo_audio.py path/to/your_audio.wav --n-mics 3 --max-seconds 5
-```
-
-Optional flags:
-
-```
---n-mics       Number of virtual microphones (default 2)
---n-sources    Number of sources to separate (default = n_mics)
---seed         Random seed for the mixing matrix
---max-seconds  Truncate audio to this length (default 5 s)
---output-dir   Where to save results (default outputs/audio/)
-```
 
 ### Cocktail-party demo (two real WAV files)
 
@@ -222,6 +197,6 @@ synthetic demo (3 sources, random mixing):
 
 | Metric | Mean (dB) |
 |--------|-----------|
-| SNR    | ~28       |
-| SIR    | ~33       |
-| SAR    | ~29       |
+| SNR    | ~26       |
+| SIR    | ~27       |
+| SAR    | ~63       |
