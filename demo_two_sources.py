@@ -159,7 +159,7 @@ def main():
 
     # --- ICA -----------------------------------------------------------------
     print("\n  Running ICA…")
-    result = blind_source_separation(X, max_iter=2000, tol=1e-8,
+    result = blind_source_separation(X, max_iter=5000, tol=1e-8,
                                      random_state=args.seed)
 
     print(f"  Converged   : {'yes' if result['converged'] else 'NO (increase max_iter)'}")

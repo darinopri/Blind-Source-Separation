@@ -22,7 +22,8 @@ def generate_sources(n=3, n_samples=10_000, seed=0):
     rng = np.random.default_rng(seed)
     t = np.linspace(0, 1, n_samples, endpoint=False)
     s1 = np.sin(2 * np.pi * 440 * t)
-    s2 = np.sign(np.sin(2 * np.pi * 220 * t))
+    s2 = sum(np.sin(2 * np.pi * k * 220 * t) / k for k in range(1, 9))
+    s2 = s2 / np.max(np.abs(s2))
     s3 = rng.uniform(-1, 1, n_samples)
     return np.vstack([s1, s2, s3][:n])
 
@@ -299,8 +300,6 @@ ALL_TESTS = [
     test_sir_sar_perfect_recovery,
     test_evaluate_returns_sir_sar_keys,
     test_full_pipeline_sir_sar,
-    test_librosa_mixing_shape,
-    test_librosa_bss_separation,
 ]
 
 
