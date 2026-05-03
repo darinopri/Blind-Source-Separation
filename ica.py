@@ -64,11 +64,15 @@ def compute_covariance(X: np.ndarray) -> np.ndarray:
 
 def eigendecompose(C: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Eigendecompose the covariance matrix.
+    Eigendecompose a real symmetric matrix via the Jacobi eigenvalue algorithm.
 
         C = E D E^T
 
-    Uses np.linalg.eigh (symmetric matrix → real, sorted eigenvalues).
+    Repeatedly applies Givens rotations (G) that zero out the largest
+    off-diagonal element: A <- G^T A G.  The rotation angle satisfies
+    cot(2φ) = (A[q,q] - A[p,p]) / (2 A[p,q]), choosing the smaller root
+    t = tan(φ) to minimise the rotation.  Eigenvectors accumulate as V <- V G.
+    The diagonal of the converged A contains the eigenvalues.
 
     Parameters
     ----------
@@ -76,13 +80,52 @@ def eigendecompose(C: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
     Returns
     -------
-    E : ndarray, shape (n, n)  — eigenvectors (columns)
-    D : ndarray, shape (n,)    — eigenvalues (ascending)
+    E : ndarray, shape (n, n)  — eigenvectors (columns), descending order
+    D : ndarray, shape (n,)    — eigenvalues, descending order
     """
-    D, E = np.linalg.eigh(C)
-    # Sort descending so largest variance component comes first
+    n = C.shape[0]
+    A = C.astype(float).copy()
+    V = np.eye(n)
+
+    for _ in range(100 * n * n):
+        # Locate the off-diagonal element with the largest absolute value
+        p, q, max_val = 0, 1, 0.0
+        for i in range(n - 1):
+            for j in range(i + 1, n):
+                if abs(A[i, j]) > max_val:
+                    max_val, p, q = abs(A[i, j]), i, j
+
+        if max_val < 1e-10:
+            break
+
+        # Rotation angle: cot(2φ) = τ, smaller-root tan(φ) = t
+        tau = (A[q, q] - A[p, p]) / (2.0 * A[p, q])
+        t   = (1.0 / (tau + np.sqrt(1.0 + tau ** 2))
+               if tau >= 0
+               else 1.0 / (tau - np.sqrt(1.0 + tau ** 2)))
+        c   = 1.0 / np.sqrt(1.0 + t ** 2)   # cos(φ)
+        s   = t * c                           # sin(φ)
+
+        # Similarity transform A <- G^T A G
+        A_pp, A_qq, A_pq = A[p, p], A[q, q], A[p, q]
+        A[p, p] = c**2 * A_pp + s**2 * A_qq - 2*s*c * A_pq
+        A[q, q] = s**2 * A_pp + c**2 * A_qq + 2*s*c * A_pq
+        A[p, q] = A[q, p] = 0.0
+
+        for r in range(n):
+            if r != p and r != q:
+                A_rp, A_rq = A[r, p], A[r, q]
+                A[r, p] = A[p, r] = c * A_rp - s * A_rq
+                A[r, q] = A[q, r] = s * A_rp + c * A_rq
+
+        # Accumulate eigenvectors: V <- V G
+        V_p, V_q = V[:, p].copy(), V[:, q].copy()
+        V[:, p] = c * V_p - s * V_q
+        V[:, q] = s * V_p + c * V_q
+
+    D   = np.diag(A)
     idx = np.argsort(D)[::-1]
-    return E[:, idx], D[idx]
+    return V[:, idx], D[idx]
 
 
 def whiten(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
